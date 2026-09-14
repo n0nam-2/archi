@@ -2,7 +2,6 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <!-- 모바일 뷰포트 확대/축소 및 이동 완전 방지 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>건축학도 생존기: 크리틱을 피하라!</title>
   
@@ -44,7 +43,7 @@
       box-shadow: 0 0 20px rgba(0,0,0,0.3);
     }
 
-    /* 상단 UI (점수 & 목숨) */
+    /* 상단 UI (점수, 난이도, 목숨) */
     #header-ui {
       position: absolute;
       top: env(safe-area-inset-top, 16px);
@@ -53,10 +52,29 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 20px;
-      color: #333333;
       z-index: 10;
       pointer-events: none;
+    }
+
+    .info-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    #score-text {
+      font-size: 20px;
+      color: #333333;
+    }
+
+    #level-badge {
+      font-size: 13px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background-color: #e0e0e0;
+      color: #424242;
+      width: fit-content;
+      transition: all 0.3s;
     }
 
     .hearts {
@@ -72,7 +90,6 @@
       touch-action: none;
     }
 
-    /* 시작 / 종료 팝업 화면 */
     .overlay {
       position: absolute;
       inset: 0;
@@ -127,29 +144,31 @@
 
 <div id="game-container">
   <div id="header-ui">
-    <div id="score-text">생존 점수: 0</div>
+    <div class="info-left">
+      <div id="score-text">생존 점수: 0</div>
+      <div id="level-badge">초기 크리틱</div>
+    </div>
     <div id="lives-text" class="hearts">❤️❤️❤️</div>
   </div>
 
   <canvas id="gameCanvas"></canvas>
 
-  <!-- 시작 화면 -->
   <div id="start-screen" class="overlay">
     <h1>📐 마감 지옥 탈출</h1>
     <p>
       화면 어디든 <b>손가락으로 터치해 좌우로 밀면</b><br>
       학생이 손가락을 따라 피합니다!<br><br>
-      쏟아지는 <b>검은 크리틱 글자</b>를 피해 살아남으세요.<br>
+      시간이 흐를수록 <b>교수님의 크리틱이 더욱 빨라지고<br>동시에 여러 개가 쏟아집니다!</b><br>
       (3번 맞으면 즉시 F학점!)
     </p>
     <button id="start-btn" class="btn">마감 시작!</button>
   </div>
 
-  <!-- 게임 오버 화면 -->
   <div id="gameover-screen" class="overlay hidden">
     <h1>💥 크리틱 폭격 완료</h1>
     <p id="final-score-text">최종 생존 점수: 0</p>
-    <p style="font-size: 16px; color: #718096; margin-top: -12px;">
+    <p id="final-level-text" style="font-size: 15px; color: #e65100; margin-top: -16px; margin-bottom: 8px;"></p>
+    <p style="font-size: 16px; color: #718096;">
       "교수님: 다음 주에 처음부터 다시 설계해 오세요."
     </p>
     <button id="restart-btn" class="btn">다시 마감하기</button>
@@ -166,8 +185,10 @@
   const startBtn = document.getElementById('start-btn');
   const restartBtn = document.getElementById('restart-btn');
   const scoreText = document.getElementById('score-text');
+  const levelBadge = document.getElementById('level-badge');
   const livesText = document.getElementById('lives-text');
   const finalScoreText = document.getElementById('final-score-text');
+  const finalLevelText = document.getElementById('final-level-text');
 
   const CRITIC_WORDS = ["다시", "별론데?", "하...", "뭐야?"];
 
@@ -176,9 +197,8 @@
   let lives = 3;
   let animationId = null;
   let spawnTimer = 0;
-  let spawnInterval = 45;
+  let currentStageName = "초기 크리틱";
 
-  // 플레이어 (건축학과 학생)
   const player = {
     x: 0,
     y: 0,
@@ -215,7 +235,6 @@
   function updatePlayerPosition(clientX) {
     const rect = canvas.getBoundingClientRect();
     const currentTouchX = clientX - rect.left;
-    
     player.x = currentTouchX - player.width / 2;
 
     if (player.x < 0) player.x = 0;
@@ -224,22 +243,16 @@
     }
   }
 
-  // 모바일 터치 이벤트
   window.addEventListener('touchmove', (e) => {
     if (!isPlaying) return;
-    if (e.touches.length > 0) {
-      updatePlayerPosition(e.touches[0].clientX);
-    }
+    if (e.touches.length > 0) updatePlayerPosition(e.touches[0].clientX);
   }, { passive: true });
 
   window.addEventListener('touchstart', (e) => {
     if (!isPlaying) return;
-    if (e.touches.length > 0) {
-      updatePlayerPosition(e.touches[0].clientX);
-    }
+    if (e.touches.length > 0) updatePlayerPosition(e.touches[0].clientX);
   }, { passive: true });
 
-  // 마우스 이벤트
   let isMouseDown = false;
   window.addEventListener('mousedown', (e) => {
     if (!isPlaying) return;
@@ -252,18 +265,15 @@
   });
   window.addEventListener('mouseup', () => { isMouseDown = false; });
 
-  // 건축학도 우는 일러스트
   function drawPlayer(x, y) {
     ctx.save();
     ctx.translate(x, y);
 
-    // 몸통
     ctx.fillStyle = '#1976d2';
     ctx.beginPath();
     ctx.roundRect(8, 30, 36, 26, [8, 8, 2, 2]);
     ctx.fill();
 
-    // T자 삼각자
     ctx.strokeStyle = '#78909c';
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -273,20 +283,17 @@
     ctx.lineTo(8, 27);
     ctx.stroke();
 
-    // 얼굴
     ctx.fillStyle = '#ffecb3';
     ctx.beginPath();
     ctx.arc(26, 20, 19, 0, Math.PI * 2);
     ctx.fill();
 
-    // 다크서클
     ctx.fillStyle = '#b0bec5';
     ctx.beginPath();
     ctx.arc(19, 21, 5, 0, Math.PI);
     ctx.arc(33, 21, 5, 0, Math.PI);
     ctx.fill();
 
-    // 눈 (> <)
     ctx.strokeStyle = '#263238';
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
@@ -295,13 +302,11 @@
     ctx.moveTo(36, 17); ctx.lineTo(32, 19); ctx.lineTo(36, 22);
     ctx.stroke();
 
-    // 우는 입
     ctx.fillStyle = '#d32f2f';
     ctx.beginPath();
     ctx.arc(26, 27, 5.5, 0, Math.PI, false);
     ctx.fill();
 
-    // 눈물
     ctx.fillStyle = '#00b0ff';
     ctx.fillRect(17, 22, 3.5, 12);
     ctx.beginPath();
@@ -316,7 +321,6 @@
     ctx.restore();
   }
 
-  // [수정] 20px 크기로 작아진 검은색 크리틱 글자
   function drawObstacle(item) {
     ctx.save();
     ctx.font = '20px "Jua", sans-serif';
@@ -327,21 +331,37 @@
     ctx.restore();
   }
 
-  // [수정] 글자 크기에 맞춘 폭/높이 계산
-  function spawnObstacle() {
+  // 1개 단어 개체 생성
+  function createSingleObstacle() {
     const text = CRITIC_WORDS[Math.floor(Math.random() * CRITIC_WORDS.length)];
     ctx.font = '20px "Jua", sans-serif';
     const textMetrics = ctx.measureText(text);
-    
     const width = textMetrics.width;
-    const height = 20; // 20px 폰트 높이
+    const height = 20;
     const x = Math.random() * (canvas.width - width);
-    const speed = 3.2 + Math.random() * 2 + Math.min(score / 400, 4.5);
+    
+    // 기본 속도 + 점수 비례 가속 (최대 11.0까지 점진적 상승)
+    const speed = 3.5 + Math.random() * 2.0 + Math.min(score / 250, 5.5);
 
-    obstacles.push({ text, x, y: -height, width, height, speed });
+    return { text, x, y: -height, width, height, speed };
   }
 
-  // 글자 피격 판정
+  // 시간에 따라 스폰 개수 결정
+  function spawnObstacles() {
+    // 800점 이상: 40% 확률로 2개 동시 생성
+    // 1600점 이상: 3개까지 다중 생성 가능
+    let count = 1;
+    if (score > 1600) {
+      count = Math.random() < 0.5 ? 3 : 2;
+    } else if (score > 800) {
+      count = Math.random() < 0.4 ? 2 : 1;
+    }
+
+    for (let i = 0; i < count; i++) {
+      obstacles.push(createSingleObstacle());
+    }
+  }
+
   function checkCollision(player, textObj) {
     const paddingX = 2;
     return (
@@ -357,7 +377,6 @@
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 모눈종이 배경
     ctx.strokeStyle = '#f0f0f0';
     ctx.lineWidth = 1;
     for (let x = 0; x < canvas.width; x += 30) {
@@ -370,15 +389,37 @@
     score++;
     scoreText.innerText = `생존 점수: ${score}`;
 
+    // 점수에 따른 난이도 단계 및 주기 계산
+    let currentInterval = 46;
+    if (score < 400) {
+      currentStageName = "단계: ☕ 온화한 피드백";
+      levelBadge.style.backgroundColor = "#e8f5e9";
+      levelBadge.style.color = "#2e7d32";
+      currentInterval = Math.max(36, 46 - Math.floor(score / 50));
+    } else if (score < 1000) {
+      currentStageName = "단계: ⚡ 날카로운 지적";
+      levelBadge.style.backgroundColor = "#fff3e0";
+      levelBadge.style.color = "#e65100";
+      currentInterval = Math.max(26, 36 - Math.floor((score - 400) / 70));
+    } else if (score < 1800) {
+      currentStageName = "단계: 🔥 연속 크리틱 폭격";
+      levelBadge.style.backgroundColor = "#ffebee";
+      levelBadge.style.color = "#c62828";
+      currentInterval = Math.max(18, 26 - Math.floor((score - 1000) / 90));
+    } else {
+      currentStageName = "단계: ☠️ 마감 직전 멘붕";
+      levelBadge.style.backgroundColor = "#212121";
+      levelBadge.style.color = "#ff5252";
+      currentInterval = 14; // 초고속 낙하
+    }
+    levelBadge.innerText = currentStageName;
+
     drawPlayer(player.x, player.y);
 
     spawnTimer++;
-    if (spawnTimer >= spawnInterval) {
-      spawnObstacle();
+    if (spawnTimer >= currentInterval) {
+      spawnObstacles();
       spawnTimer = 0;
-      if (spawnInterval > 18 && score % 150 === 0) {
-        spawnInterval--;
-      }
     }
 
     for (let i = obstacles.length - 1; i >= 0; i--) {
@@ -418,7 +459,6 @@
     resizeGame();
     score = 0;
     lives = 3;
-    spawnInterval = 45;
     spawnTimer = 0;
     obstacles = [];
     player.x = (canvas.width - player.width) / 2;
@@ -438,6 +478,7 @@
     isPlaying = false;
     if (animationId) cancelAnimationFrame(animationId);
     finalScoreText.innerText = `최종 생존 점수: ${score}`;
+    finalLevelText.innerText = `도달 수준: ${currentStageName.replace('단계: ', '')}`;
     gameoverScreen.classList.remove('hidden');
   }
 
