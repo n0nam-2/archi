@@ -2,64 +2,68 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!-- 모바일 뷰포트 확대/축소 및 이동 완전 방지 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>건축학도 생존기: 크리틱을 피하라!</title>
-  <!-- 동글동글한 Google Font (Jua) -->
+  
+  <!-- 동글동글한 글씨체 (Google Jua) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+
   <style>
     * {
       box-sizing: border-box;
-      user-select: none;
-      -webkit-user-select: none;
-      font-family: 'Jua', sans-serif;
-      touch-action: none; /* 모바일에서 불필요한 스크롤, 확대/축소 방지 */
-    }
-
-    body {
       margin: 0;
       padding: 0;
-      background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      font-family: 'Jua', sans-serif;
+    }
+
+    /* 모바일 전체 화면 및 스크롤 바운스 차단 */
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #1a202c;
+      touch-action: none; /* 브라우저 기본 제스처 차단 */
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
-      overflow: hidden;
     }
 
-    /* 모바일 반응형 컨테이너 */
     #game-container {
       position: relative;
       width: 100vw;
       height: 100vh;
+      /* 동적 뷰포트 높이 지원(주소창 가림 방지) */
+      height: 100dvh; 
       max-width: 480px;
-      max-height: 800px;
-      background: #fafafa;
-      border: 4px solid #455a64;
-      border-radius: 20px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      background-color: #ffffff;
       overflow: hidden;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
     }
 
-    /* 점수 및 체력 상단바 */
+    /* 상단 UI (점수 & 목숨) */
     #header-ui {
       position: absolute;
-      top: 15px;
-      left: 15px;
-      right: 15px;
+      top: env(safe-area-inset-top, 16px);
+      left: 16px;
+      right: 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-size: 20px;
-      color: #37474f;
+      color: #333333;
       z-index: 10;
-      pointer-events: none; /* 터치 관통 */
+      pointer-events: none; /* 터치 방해 방지 */
     }
 
     .hearts {
-      color: #ff5252;
-      font-size: 20px;
+      color: #e53e3e;
+      font-size: 22px;
       letter-spacing: 3px;
     }
 
@@ -67,16 +71,14 @@
       display: block;
       width: 100%;
       height: 100%;
+      touch-action: none;
     }
 
-    /* 시작 및 결과 오버레이 화면 */
+    /* 시작 / 종료 팝업 화면 */
     .overlay {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(255, 255, 255, 0.9);
+      inset: 0;
+      background: rgba(255, 255, 255, 0.94);
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -87,33 +89,35 @@
     }
 
     .overlay h1 {
-      font-size: 30px;
-      color: #263238;
+      font-size: 32px;
+      color: #2d3748;
       margin-bottom: 12px;
     }
 
     .overlay p {
-      font-size: 17px;
-      color: #546e7a;
+      font-size: 18px;
+      color: #4a5568;
       line-height: 1.6;
-      margin-bottom: 24px;
+      margin-bottom: 28px;
     }
 
     .btn {
-      padding: 14px 38px;
+      padding: 14px 44px;
       font-size: 22px;
-      background-color: #ff7043;
+      background-color: #ff5722;
       color: #ffffff;
       border: none;
-      border-radius: 50px;
+      border-radius: 40px;
       box-shadow: 0 5px 0 #d84315;
       cursor: pointer;
-      transition: transform 0.1s ease;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
 
     .btn:active {
-      transform: translateY(4px);
-      box-shadow: 0 1px 0 #d84315;
+      transform: translateY(3px);
+      box-shadow: 0 2px 0 #d84315;
     }
 
     .hidden {
@@ -124,7 +128,7 @@
 <body>
 
 <div id="game-container">
-  <!-- 게임 내 점수/체력 표시 UI -->
+  <!-- 게임 점수 및 체력 -->
   <div id="header-ui">
     <div id="score-text">생존 점수: 0</div>
     <div id="lives-text" class="hearts">❤️❤️❤️</div>
@@ -132,14 +136,14 @@
 
   <canvas id="gameCanvas"></canvas>
 
-  <!-- 게임 시작 화면 -->
+  <!-- 시작 화면 -->
   <div id="start-screen" class="overlay">
     <h1>📐 마감 지옥 탈출</h1>
     <p>
-      교수님의 무서운 크리틱이 쏟아집니다!<br>
-      <b>손가락으로 학생을 터치해 좌우로 드래그</b>하여<br>
-      검은 글자들을 피하세요.<br>
-      3번 맞으면 <b>F학점(게임오버)</b>입니다!
+      화면 어디든 <b>손가락으로 터치해 좌우로 밀면</b><br>
+      학생이 손가락을 따라 피합니다!<br><br>
+      쏟아지는 <b>검은 크리틱 글자</b>를 피해 살아남으세요.<br>
+      (3번 맞으면 즉시 F학점!)
     </p>
     <button id="start-btn" class="btn">마감 시작!</button>
   </div>
@@ -148,10 +152,10 @@
   <div id="gameover-screen" class="overlay hidden">
     <h1>💥 크리틱 폭격 완료</h1>
     <p id="final-score-text">최종 생존 점수: 0</p>
-    <p style="font-size: 15px; color: #90a4ae; margin-top: -10px;">
-      "다시 해 오도록 하세요..."
+    <p style="font-size: 16px; color: #718096; margin-top: -12px;">
+      "교수님: 다음 주에 처음부터 다시 설계해 오세요."
     </p>
-    <button id="restart-btn" class="btn">다시 시작하기</button>
+    <button id="restart-btn" class="btn">다시 마감하기</button>
   </div>
 </div>
 
@@ -168,177 +172,195 @@
   const livesText = document.getElementById('lives-text');
   const finalScoreText = document.getElementById('final-score-text');
 
-  // 피해야 하는 단어 목록
+  // 회피해야 하는 크리틱 단어들
   const CRITIC_WORDS = ["다시", "별론데?", "하...", "뭐야?"];
 
   let isPlaying = false;
   let score = 0;
   let lives = 3;
-  let animationId;
+  let animationId = null;
   let spawnTimer = 0;
-  let spawnInterval = 50;
+  let spawnInterval = 45;
 
-  // 플레이어 (건축학과 학생)
+  // 학생 캐릭터 속성
   const player = {
     x: 0,
     y: 0,
-    width: 50,
-    height: 55,
-    targetX: 0
+    width: 52,
+    height: 56
   };
 
   let obstacles = [];
 
-  // 캔버스 크기 맞추기 함수
-  function resizeCanvas() {
-    canvas.width = container.clientWidth;
-    canvas.height = container.clientHeight;
-    player.y = canvas.height - 90;
+  // 모바일 화면 해상도 & 크기 정밀 동기화
+  function resizeGame() {
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    // 바닥에서 일정 간격 위에 캐릭터 배치 (모바일 하단 홈 바 고려)
+    player.y = canvas.height - 95;
+
     if (!isPlaying) {
-      player.x = canvas.width / 2 - player.width / 2;
-      player.targetX = player.x;
+      player.x = (canvas.width - player.width) / 2;
+    } else {
+      // 화면 크기가 변해도 밖으로 튕겨나가지 않도록 제한
+      if (player.x + player.width > canvas.width) {
+        player.x = canvas.width - player.width;
+      }
     }
   }
 
-  window.addEventListener('resize', resizeCanvas);
-  resizeCanvas();
+  window.addEventListener('resize', resizeGame);
+  window.addEventListener('orientationchange', () => {
+    setTimeout(resizeGame, 100);
+  });
+  resizeGame();
 
-  // --- 손가락 터치 및 마우스 드래그 조작 ---
-  let isDragging = false;
-
-  function handleMove(clientX) {
+  // --- 모바일 터치 및 마우스 완벽 대응 조작 로직 ---
+  function updatePlayerPosition(clientX) {
     const rect = canvas.getBoundingClientRect();
-    const touchX = clientX - rect.left;
-    // 터치한 위치가 학생의 정중앙에 오도록 계산
-    player.x = touchX - player.width / 2;
+    // 캔버스 내 상대 터치 좌표 계산
+    const currentTouchX = clientX - rect.left;
+    
+    // 손가락 위치에 캐릭터의 중심이 오도록 이동
+    player.x = currentTouchX - player.width / 2;
 
-    // 화면 경계 제한
+    // 화면 좌우 밖으로 나가지 못하게 제한
     if (player.x < 0) player.x = 0;
-    if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+    if (player.x + player.width > canvas.width) {
+      player.x = canvas.width - player.width;
+    }
   }
 
-  // 모바일 터치 이벤트
-  canvas.addEventListener('touchstart', (e) => {
-    isDragging = true;
-    handleMove(e.touches[0].clientX);
-  }, { passive: false });
+  // 터치 이벤트
+  window.addEventListener('touchmove', (e) => {
+    if (!isPlaying) return;
+    if (e.touches.length > 0) {
+      updatePlayerPosition(e.touches[0].clientX);
+    }
+  }, { passive: true });
 
-  canvas.addEventListener('touchmove', (e) => {
-    if (!isDragging) return;
-    handleMove(e.touches[0].clientX);
-    e.preventDefault(); // 화면 스크롤 방지
-  }, { passive: false });
+  window.addEventListener('touchstart', (e) => {
+    if (!isPlaying) return;
+    if (e.touches.length > 0) {
+      updatePlayerPosition(e.touches[0].clientX);
+    }
+  }, { passive: true });
 
-  window.addEventListener('touchend', () => { isDragging = false; });
-
-  // PC 마우스 드래그 이벤트 (테스트 및 PC 브라우저 지원)
-  canvas.addEventListener('mousedown', (e) => {
-    isDragging = true;
-    handleMove(e.clientX);
+  // PC 마우스 테스트 대응
+  let isMouseDown = false;
+  window.addEventListener('mousedown', (e) => {
+    if (!isPlaying) return;
+    isMouseDown = true;
+    updatePlayerPosition(e.clientX);
   });
-
   window.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    handleMove(e.clientX);
+    if (!isPlaying || !isMouseDown) return;
+    updatePlayerPosition(e.clientX);
   });
+  window.addEventListener('mouseup', () => { isMouseDown = false; });
 
-  window.addEventListener('mouseup', () => { isDragging = false; });
-
-  // 우는 건축학도 일러스트 그리기
+  // 건축학도 우는 일러스트 그리기
   function drawPlayer(x, y) {
     ctx.save();
     ctx.translate(x, y);
 
-    // 몸통 (티셔츠)
-    ctx.fillStyle = '#42a5f5';
+    // 몸통 (건축학도의 파란 옷)
+    ctx.fillStyle = '#1976d2';
     ctx.beginPath();
-    ctx.roundRect(8, 30, 34, 25, [8, 8, 2, 2]);
+    ctx.roundRect(8, 30, 36, 26, [8, 8, 2, 2]);
     ctx.fill();
 
-    // T자 삼각자
+    // T자 삼각자 소품
     ctx.strokeStyle = '#78909c';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(4, 25);
-    ctx.lineTo(4, 52);
-    ctx.moveTo(-1, 28);
-    ctx.lineTo(9, 28);
+    ctx.moveTo(3, 24);
+    ctx.lineTo(3, 54);
+    ctx.moveTo(-2, 27);
+    ctx.lineTo(8, 27);
     ctx.stroke();
 
     // 얼굴
-    ctx.fillStyle = '#ffe0b2';
+    ctx.fillStyle = '#ffecb3';
     ctx.beginPath();
-    ctx.arc(25, 20, 18, 0, Math.PI * 2);
+    ctx.arc(26, 20, 19, 0, Math.PI * 2);
     ctx.fill();
 
     // 다크서클
     ctx.fillStyle = '#b0bec5';
     ctx.beginPath();
-    ctx.arc(18, 20, 4.5, 0, Math.PI);
-    ctx.arc(32, 20, 4.5, 0, Math.PI);
+    ctx.arc(19, 21, 5, 0, Math.PI);
+    ctx.arc(33, 21, 5, 0, Math.PI);
     ctx.fill();
 
-    // 우는 눈 (> <)
-    ctx.strokeStyle = '#37474f';
-    ctx.lineWidth = 2;
+    // 질끈 감고 우는 눈 (> <)
+    ctx.strokeStyle = '#263238';
+    ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(15, 17); ctx.lineTo(19, 19); ctx.lineTo(15, 21);
-    ctx.moveTo(35, 17); ctx.lineTo(31, 19); ctx.lineTo(35, 21);
+    // 왼쪽 눈
+    ctx.moveTo(16, 17); ctx.lineTo(20, 19); ctx.lineTo(16, 22);
+    // 오른쪽 눈
+    ctx.moveTo(36, 17); ctx.lineTo(32, 19); ctx.lineTo(36, 22);
     ctx.stroke();
 
-    // 우는 입
+    // 벌리고 우는 입
     ctx.fillStyle = '#d32f2f';
     ctx.beginPath();
-    ctx.arc(25, 26, 5, 0, Math.PI, false);
+    ctx.arc(26, 27, 5.5, 0, Math.PI, false);
     ctx.fill();
 
-    // 눈물 줄기 & 방울
-    ctx.fillStyle = '#29b6f6';
-    ctx.fillRect(16, 21, 3, 10);
+    // 흘러내리는 눈물
+    ctx.fillStyle = '#00b0ff';
+    ctx.fillRect(17, 22, 3.5, 12);
     ctx.beginPath();
-    ctx.arc(17.5, 33, 2.5, 0, Math.PI * 2);
+    ctx.arc(18.7, 36, 3, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillRect(31, 21, 3, 10);
+    ctx.fillRect(32, 22, 3.5, 12);
     ctx.beginPath();
-    ctx.arc(32.5, 33, 2.5, 0, Math.PI * 2);
+    ctx.arc(33.7, 36, 3, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
   }
 
-  // [수정] 배경 없는 순수 검은 글자만 그리기
+  // 피해야 하는 검은 단어 그리기 (배경 없음)
   function drawObstacle(item) {
     ctx.save();
-    ctx.font = '26px "Jua", sans-serif';
-    ctx.fillStyle = '#111111'; // 검은색 글자
+    ctx.font = 'bold 28px "Jua", sans-serif';
+    ctx.fillStyle = '#000000'; // 선명한 검은색
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText(item.text, item.x, item.y);
     ctx.restore();
   }
 
-  // 장애물 생성
+  // 단어 스폰
   function spawnObstacle() {
     const text = CRITIC_WORDS[Math.floor(Math.random() * CRITIC_WORDS.length)];
-    ctx.font = '26px "Jua", sans-serif';
+    ctx.font = 'bold 28px "Jua", sans-serif';
     const textMetrics = ctx.measureText(text);
+    
     const width = textMetrics.width;
-    const height = 26; // 글자 높이 대략 계산
+    const height = 28;
     const x = Math.random() * (canvas.width - width);
-    const speed = 3.2 + Math.random() * 2 + Math.min(score / 450, 4.0);
+    // 시간에 따른 낙하 속도 증가
+    const speed = 3.2 + Math.random() * 2 + Math.min(score / 400, 4.5);
 
     obstacles.push({ text, x, y: -height, width, height, speed });
   }
 
-  // 박스 충돌 감지
+  // 충돌 감지 로직
   function checkCollision(player, textObj) {
-    // 글자 피격 판정을 살짝 여유 있게 설정
-    const padding = 3;
+    const paddingX = 4;
     return (
-      player.x < textObj.x + textObj.width - padding &&
-      player.x + player.width > textObj.x + padding &&
+      player.x < textObj.x + textObj.width - paddingX &&
+      player.x + player.width > textObj.x + paddingX &&
       player.y < textObj.y + textObj.height &&
       player.y + player.height > textObj.y
     );
@@ -350,35 +372,29 @@
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 모눈종이 배경 효과
-    ctx.strokeStyle = '#eceff1';
+    // 건축용 방안지(모눈종이) 배경
+    ctx.strokeStyle = '#f0f0f0';
     ctx.lineWidth = 1;
     for (let x = 0; x < canvas.width; x += 30) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
     }
     for (let y = 0; y < canvas.height; y += 30) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
     }
 
-    // 생존 점수 누적
-    score += 1;
+    // 시간 경과에 따른 점수 증가
+    score++;
     scoreText.innerText = `생존 점수: ${score}`;
 
-    // 플레이어 그리기
+    // 플레이어 렌더링
     drawPlayer(player.x, player.y);
 
-    // 단어 생성 주기 제어
+    // 장애물 생성 주기 관리
     spawnTimer++;
     if (spawnTimer >= spawnInterval) {
       spawnObstacle();
       spawnTimer = 0;
-      if (spawnInterval > 20 && score % 150 === 0) {
+      if (spawnInterval > 18 && score % 150 === 0) {
         spawnInterval--;
       }
     }
@@ -389,7 +405,7 @@
       item.y += item.speed;
       drawObstacle(item);
 
-      // 충돌 판정
+      // 충돌 발생
       if (checkCollision(player, item)) {
         obstacles.splice(i, 1);
         lives--;
@@ -402,8 +418,8 @@
         continue;
       }
 
-      // 화면 하단을 벗어나면 제거
-      if (item.y > canvas.height + 30) {
+      // 화면 밑으로 내려간 글자 정리
+      if (item.y > canvas.height + 40) {
         obstacles.splice(i, 1);
       }
     }
@@ -411,7 +427,7 @@
     animationId = requestAnimationFrame(update);
   }
 
-  // 체력 UI 갱신
+  // 체력 UI 표시
   function updateLivesUI() {
     let heartIcons = '';
     for (let i = 0; i < 3; i++) {
@@ -422,13 +438,13 @@
 
   // 게임 시작
   function startGame() {
-    resizeCanvas();
+    resizeGame();
     score = 0;
     lives = 3;
-    spawnInterval = 50;
+    spawnInterval = 45;
     spawnTimer = 0;
     obstacles = [];
-    player.x = canvas.width / 2 - player.width / 2;
+    player.x = (canvas.width - player.width) / 2;
 
     updateLivesUI();
     scoreText.innerText = `생존 점수: 0`;
@@ -437,20 +453,21 @@
     gameoverScreen.classList.add('hidden');
 
     isPlaying = true;
-    cancelAnimationFrame(animationId);
+    if (animationId) cancelAnimationFrame(animationId);
     animationId = requestAnimationFrame(update);
   }
 
   // 게임 오버
   function gameOver() {
     isPlaying = false;
-    cancelAnimationFrame(animationId);
+    if (animationId) cancelAnimationFrame(animationId);
     finalScoreText.innerText = `최종 생존 점수: ${score}`;
     gameoverScreen.classList.remove('hidden');
   }
 
-  startBtn.addEventListener('click', startGame);
-  restartBtn.addEventListener('click', startGame);
+  // 모바일 터치 지연 방지를 위해 pointerdown 및 click 모두 바인딩
+  startBtn.addEventListener('pointerdown', startGame);
+  restartBtn.addEventListener('pointerdown', startGame);
 </script>
 
 </body>
