@@ -22,13 +22,12 @@
       font-family: 'Jua', sans-serif;
     }
 
-    /* 모바일 전체 화면 및 스크롤 바운스 차단 */
     html, body {
       width: 100%;
       height: 100%;
       overflow: hidden;
       background-color: #1a202c;
-      touch-action: none; /* 브라우저 기본 제스처 차단 */
+      touch-action: none;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -38,7 +37,6 @@
       position: relative;
       width: 100vw;
       height: 100vh;
-      /* 동적 뷰포트 높이 지원(주소창 가림 방지) */
       height: 100dvh; 
       max-width: 480px;
       background-color: #ffffff;
@@ -58,7 +56,7 @@
       font-size: 20px;
       color: #333333;
       z-index: 10;
-      pointer-events: none; /* 터치 방해 방지 */
+      pointer-events: none;
     }
 
     .hearts {
@@ -128,7 +126,6 @@
 <body>
 
 <div id="game-container">
-  <!-- 게임 점수 및 체력 -->
   <div id="header-ui">
     <div id="score-text">생존 점수: 0</div>
     <div id="lives-text" class="hearts">❤️❤️❤️</div>
@@ -172,7 +169,6 @@
   const livesText = document.getElementById('lives-text');
   const finalScoreText = document.getElementById('final-score-text');
 
-  // 회피해야 하는 크리틱 단어들
   const CRITIC_WORDS = ["다시", "별론데?", "하...", "뭐야?"];
 
   let isPlaying = false;
@@ -182,7 +178,7 @@
   let spawnTimer = 0;
   let spawnInterval = 45;
 
-  // 학생 캐릭터 속성
+  // 플레이어 (건축학과 학생)
   const player = {
     x: 0,
     y: 0,
@@ -192,7 +188,6 @@
 
   let obstacles = [];
 
-  // 모바일 화면 해상도 & 크기 정밀 동기화
   function resizeGame() {
     const width = container.clientWidth;
     const height = container.clientHeight;
@@ -200,13 +195,11 @@
     canvas.width = width;
     canvas.height = height;
 
-    // 바닥에서 일정 간격 위에 캐릭터 배치 (모바일 하단 홈 바 고려)
     player.y = canvas.height - 95;
 
     if (!isPlaying) {
       player.x = (canvas.width - player.width) / 2;
     } else {
-      // 화면 크기가 변해도 밖으로 튕겨나가지 않도록 제한
       if (player.x + player.width > canvas.width) {
         player.x = canvas.width - player.width;
       }
@@ -219,23 +212,19 @@
   });
   resizeGame();
 
-  // --- 모바일 터치 및 마우스 완벽 대응 조작 로직 ---
   function updatePlayerPosition(clientX) {
     const rect = canvas.getBoundingClientRect();
-    // 캔버스 내 상대 터치 좌표 계산
     const currentTouchX = clientX - rect.left;
     
-    // 손가락 위치에 캐릭터의 중심이 오도록 이동
     player.x = currentTouchX - player.width / 2;
 
-    // 화면 좌우 밖으로 나가지 못하게 제한
     if (player.x < 0) player.x = 0;
     if (player.x + player.width > canvas.width) {
       player.x = canvas.width - player.width;
     }
   }
 
-  // 터치 이벤트
+  // 모바일 터치 이벤트
   window.addEventListener('touchmove', (e) => {
     if (!isPlaying) return;
     if (e.touches.length > 0) {
@@ -250,7 +239,7 @@
     }
   }, { passive: true });
 
-  // PC 마우스 테스트 대응
+  // 마우스 이벤트
   let isMouseDown = false;
   window.addEventListener('mousedown', (e) => {
     if (!isPlaying) return;
@@ -263,18 +252,18 @@
   });
   window.addEventListener('mouseup', () => { isMouseDown = false; });
 
-  // 건축학도 우는 일러스트 그리기
+  // 건축학도 우는 일러스트
   function drawPlayer(x, y) {
     ctx.save();
     ctx.translate(x, y);
 
-    // 몸통 (건축학도의 파란 옷)
+    // 몸통
     ctx.fillStyle = '#1976d2';
     ctx.beginPath();
     ctx.roundRect(8, 30, 36, 26, [8, 8, 2, 2]);
     ctx.fill();
 
-    // T자 삼각자 소품
+    // T자 삼각자
     ctx.strokeStyle = '#78909c';
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -297,24 +286,22 @@
     ctx.arc(33, 21, 5, 0, Math.PI);
     ctx.fill();
 
-    // 질끈 감고 우는 눈 (> <)
+    // 눈 (> <)
     ctx.strokeStyle = '#263238';
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    // 왼쪽 눈
     ctx.moveTo(16, 17); ctx.lineTo(20, 19); ctx.lineTo(16, 22);
-    // 오른쪽 눈
     ctx.moveTo(36, 17); ctx.lineTo(32, 19); ctx.lineTo(36, 22);
     ctx.stroke();
 
-    // 벌리고 우는 입
+    // 우는 입
     ctx.fillStyle = '#d32f2f';
     ctx.beginPath();
     ctx.arc(26, 27, 5.5, 0, Math.PI, false);
     ctx.fill();
 
-    // 흘러내리는 눈물
+    // 눈물
     ctx.fillStyle = '#00b0ff';
     ctx.fillRect(17, 22, 3.5, 12);
     ctx.beginPath();
@@ -329,35 +316,34 @@
     ctx.restore();
   }
 
-  // 피해야 하는 검은 단어 그리기 (배경 없음)
+  // [수정] 20px 크기로 작아진 검은색 크리틱 글자
   function drawObstacle(item) {
     ctx.save();
-    ctx.font = 'bold 28px "Jua", sans-serif';
-    ctx.fillStyle = '#000000'; // 선명한 검은색
+    ctx.font = '20px "Jua", sans-serif';
+    ctx.fillStyle = '#000000';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText(item.text, item.x, item.y);
     ctx.restore();
   }
 
-  // 단어 스폰
+  // [수정] 글자 크기에 맞춘 폭/높이 계산
   function spawnObstacle() {
     const text = CRITIC_WORDS[Math.floor(Math.random() * CRITIC_WORDS.length)];
-    ctx.font = 'bold 28px "Jua", sans-serif';
+    ctx.font = '20px "Jua", sans-serif';
     const textMetrics = ctx.measureText(text);
     
     const width = textMetrics.width;
-    const height = 28;
+    const height = 20; // 20px 폰트 높이
     const x = Math.random() * (canvas.width - width);
-    // 시간에 따른 낙하 속도 증가
     const speed = 3.2 + Math.random() * 2 + Math.min(score / 400, 4.5);
 
     obstacles.push({ text, x, y: -height, width, height, speed });
   }
 
-  // 충돌 감지 로직
+  // 글자 피격 판정
   function checkCollision(player, textObj) {
-    const paddingX = 4;
+    const paddingX = 2;
     return (
       player.x < textObj.x + textObj.width - paddingX &&
       player.x + player.width > textObj.x + paddingX &&
@@ -366,13 +352,12 @@
     );
   }
 
-  // 메인 게임 루프
   function update() {
     if (!isPlaying) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 건축용 방안지(모눈종이) 배경
+    // 모눈종이 배경
     ctx.strokeStyle = '#f0f0f0';
     ctx.lineWidth = 1;
     for (let x = 0; x < canvas.width; x += 30) {
@@ -382,14 +367,11 @@
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
     }
 
-    // 시간 경과에 따른 점수 증가
     score++;
     scoreText.innerText = `생존 점수: ${score}`;
 
-    // 플레이어 렌더링
     drawPlayer(player.x, player.y);
 
-    // 장애물 생성 주기 관리
     spawnTimer++;
     if (spawnTimer >= spawnInterval) {
       spawnObstacle();
@@ -399,13 +381,11 @@
       }
     }
 
-    // 장애물 이동 및 충돌 체크
     for (let i = obstacles.length - 1; i >= 0; i--) {
       const item = obstacles[i];
       item.y += item.speed;
       drawObstacle(item);
 
-      // 충돌 발생
       if (checkCollision(player, item)) {
         obstacles.splice(i, 1);
         lives--;
@@ -418,8 +398,7 @@
         continue;
       }
 
-      // 화면 밑으로 내려간 글자 정리
-      if (item.y > canvas.height + 40) {
+      if (item.y > canvas.height + 30) {
         obstacles.splice(i, 1);
       }
     }
@@ -427,7 +406,6 @@
     animationId = requestAnimationFrame(update);
   }
 
-  // 체력 UI 표시
   function updateLivesUI() {
     let heartIcons = '';
     for (let i = 0; i < 3; i++) {
@@ -436,7 +414,6 @@
     livesText.innerText = heartIcons;
   }
 
-  // 게임 시작
   function startGame() {
     resizeGame();
     score = 0;
@@ -457,7 +434,6 @@
     animationId = requestAnimationFrame(update);
   }
 
-  // 게임 오버
   function gameOver() {
     isPlaying = false;
     if (animationId) cancelAnimationFrame(animationId);
@@ -465,7 +441,6 @@
     gameoverScreen.classList.remove('hidden');
   }
 
-  // 모바일 터치 지연 방지를 위해 pointerdown 및 click 모두 바인딩
   startBtn.addEventListener('pointerdown', startGame);
   restartBtn.addEventListener('pointerdown', startGame);
 </script>
